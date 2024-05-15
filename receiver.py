@@ -28,7 +28,7 @@ def start_udp_server(listen_ip, listen_port, ack_message, ack_dest_ip, ack_dest_
 listen_ip = '0.0.0.0'
 listen_port = 12345
 ack_message = 'ACK from VM'
-ack_dest_ip = '144.122.125.9'  # IP of the host machine
+ack_dest_ip = '144.122.137.79'  # IP of the host machine
 ack_dest_port = 12345
 
 # Start the UDP server
