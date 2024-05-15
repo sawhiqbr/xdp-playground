@@ -10,7 +10,7 @@
 
 // #include <linux/types.h>
 
-#define TARGET_IP 0x904A894F // Replace with target IP in hex eg. 144.122.137.79
+#define TARGET_IP 0x907A894F // Replace with target IP in hex eg. 144.122.137.79
 #define TARGET_PORT 12345    // Replace with target port
 
 struct
