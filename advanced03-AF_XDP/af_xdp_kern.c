@@ -60,8 +60,9 @@ int xdp_sock_prog(struct xdp_md *ctx)
     }
 
     // Check if the source IP address matches the target IP address
-    bpf_trace_printk("IP src: %x, expected: %x\n", sizeof("IP src: %x, expected: %x\n"), iph->saddr, bpf_htonl(TARGET_IP));
-    if (iph->saddr != bpf_htonl(TARGET_IP))
+    __u32 src_ip = bpf_ntohl(iph->saddr); // Convert IP address to host byte order
+    bpf_trace_printk("IP src: %x, expected: %x\n", sizeof("IP src: %x, expected: %x\n"), src_ip, bpf_ntohl(TARGET_IP));
+    if (src_ip != bpf_ntohl(TARGET_IP))
         return XDP_PASS;
 
     // Check if packet data is at least the size of a UDP header
