@@ -28,8 +28,7 @@ port = 12345
 dest_ip = '192.168.122.192'  # Guest VM IP
 
 message = 'WOAH Hello from HOST MACHINE!'
-while(1):
-  send_udp_packet(dest_ip, port, message)
+send_udp_packet(dest_ip, port, message)
 
 if (wait_for_ack(port)):
   print("ACK received")
