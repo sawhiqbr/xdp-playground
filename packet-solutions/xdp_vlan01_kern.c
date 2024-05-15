@@ -6,22 +6,23 @@
 #include <bpf/bpf_endian.h>
 
 /* NOTICE: Re-defining VLAN header levels to parse */
-#define VLAN_MAX_DEPTH 10
-//#include "../common/parsing_helpers.h"
+#define VLAN_MAX_DEPTH 2
+// #include "../common/parsing_helpers.h"
 /*
  * NOTICE: Copied over parts of ../common/parsing_helpers.h
  *         to make it easier to point out compiler optimizations
  */
 
 /* Header cursor to keep track of current parsing position */
-struct hdr_cursor {
+struct hdr_cursor
+{
 	void *pos;
 };
 
 static __always_inline int proto_is_vlan(__u16 h_proto)
 {
 	return !!(h_proto == bpf_htons(ETH_P_8021Q) ||
-		  h_proto == bpf_htons(ETH_P_8021AD));
+						h_proto == bpf_htons(ETH_P_8021AD));
 }
 
 /*
@@ -29,9 +30,10 @@ static __always_inline int proto_is_vlan(__u16 h_proto)
  *	@h_vlan_TCI: priority and VLAN ID
  *	@h_vlan_encapsulated_proto: packet type ID or len
  */
-struct vlan_hdr {
-	__be16	h_vlan_TCI;
-	__be16	h_vlan_encapsulated_proto; /* NOTICE: unsigned type */
+struct vlan_hdr
+{
+	__be16 h_vlan_TCI;
+	__be16 h_vlan_encapsulated_proto; /* NOTICE: unsigned type */
 };
 
 /* Notice, parse_ethhdr() will skip VLAN tags, by advancing nh->pos and returns
@@ -40,7 +42,7 @@ struct vlan_hdr {
  * VLAN tagged packet.
  */
 static __always_inline int parse_ethhdr(struct hdr_cursor *nh, void *data_end,
-					struct ethhdr **ethhdr)
+																				struct ethhdr **ethhdr)
 {
 	struct ethhdr *eth = nh->pos;
 	int hdrsize = sizeof(*eth);
@@ -59,11 +61,12 @@ static __always_inline int parse_ethhdr(struct hdr_cursor *nh, void *data_end,
 	vlh = nh->pos;
 	h_proto = eth->h_proto;
 
-	/* Use loop unrolling to avoid the verifier restriction on loops;
-	 * support up to VLAN_MAX_DEPTH layers of VLAN encapsulation.
-	 */
-	#pragma unroll
-	for (i = 0; i < VLAN_MAX_DEPTH; i++) {
+/* Use loop unrolling to avoid the verifier restriction on loops;
+ * support up to VLAN_MAX_DEPTH layers of VLAN encapsulation.
+ */
+#pragma unroll
+	for (i = 0; i < VLAN_MAX_DEPTH; i++)
+	{
 		if (!proto_is_vlan(h_proto))
 			break;
 
