@@ -59,7 +59,7 @@ int xdp_sock_prog(struct xdp_md *ctx)
 
     // source IP address matches the target IP address
     // notice due to address translation IP address is given as 192.168.122.1
-    bpf_trace_printk("IP src: %x, expected: %x\n", sizeof("IP src: %x, expected: %x\n"), src_ip, bpf_ntohl(SOURCE_IP));
+    bpf_trace_printk("IP src: %x, expected: %x\n", sizeof("IP src: %x, expected: %x\n"), iph->saddr, bpf_ntohl(SOURCE_IP));
     if (iph->saddr != bpf_ntohl(SOURCE_IP))
         return XDP_PASS;
 

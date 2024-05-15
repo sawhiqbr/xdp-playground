@@ -26,6 +26,9 @@
 #include <linux/ipv6.h>
 #include <linux/icmpv6.h>
 
+#include <linux/ip.h>
+#include <linux/udp.h>
+
 #include "../common/common_params.h"
 #include "../common/common_user_bpf_xdp.h"
 #include "../common/common_libbpf.h"
@@ -315,7 +318,6 @@ static void exit_application(int signal) {
 }
 
 int main(int argc, char **argv) {
-    int ret;
     void *packet_buffer;
     uint64_t packet_buffer_size;
     DECLARE_LIBBPF_OPTS(bpf_object_open_opts, opts);
@@ -323,6 +325,8 @@ int main(int argc, char **argv) {
     struct rlimit rlim = {RLIM_INFINITY, RLIM_INFINITY};
     struct xsk_umem_info *umem;
     struct xsk_socket_info *xsk_socket;
+	int err;
+	char errmsg[1024];
 
     /* Global shutdown handler */
     signal(SIGINT, exit_application);
