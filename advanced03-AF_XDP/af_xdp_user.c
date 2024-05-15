@@ -223,14 +223,17 @@ static inline void csum_replace2(__sum16 *sum, __be16 old, __be16 new) {
 static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len) {
     uint8_t *pkt = xsk_umem__get_data(xsk->umem->buffer, addr);
 
-    // Check if packet is UDP
     struct ethhdr *eth = (struct ethhdr *)pkt;
+	// shouldn't need this check
     if (ntohs(eth->h_proto) != ETH_P_IP) {
+		printf("Shouldn't have end up here\n");
         return false;
     }
 
     struct iphdr *iph = (struct iphdr *)(eth + 1);
+	// shouldn't need this check
     if (iph->protocol != IPPROTO_UDP) {
+		printf("Shouldn't have end up here\n");
         return false;
     }
 
