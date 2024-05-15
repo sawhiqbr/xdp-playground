@@ -8,9 +8,9 @@
 #include <linux/in.h>
 #include <bpf/bpf_endian.h>
 
-// Use the bridge IP since NAT is altering the source IP
-#define SOURCE_IP 0xC0A87A01 // Replace with target IP in hex eg. 192.168.122.1
-#define TARGET_PORT 12345    // Replace with target port
+// NAT is altering the source IP
+#define SOURCE_IP 0xC0A87A01 // 192.168.122.1
+#define TARGET_PORT 12345
 
 struct
 {
