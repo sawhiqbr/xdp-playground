@@ -19,7 +19,7 @@ def send_udp_packet(dest_ip, port):
   for i in range(0, len(file_data), chunk_size):
     sequence_number += 1
     message = file_data[i:i+chunk_size]
-    packet = "small-1".encode() + sequence_number.to_bytes(4, "big") + \
+    packet = "small-1".encode() + b'\x00' + sequence_number.to_bytes(4, "big") + \
         total_chunks.to_bytes(4, "big") + message
 
     packets[sequence_number] = packet
