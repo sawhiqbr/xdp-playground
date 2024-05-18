@@ -15,6 +15,8 @@
 #include <unistd.h>
 
 #include <sys/resource.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 
 #include <bpf/bpf.h>
 #include <xdp/xsk.h>
@@ -91,6 +93,7 @@ struct xsk_socket_info
     struct xsk_umem_info *umem;
     struct xsk_socket *xsk;
     struct sockaddr_in peer_addr;
+    int ack_sock;
 
     uint64_t umem_frame_addr[NUM_FRAMES];
     uint32_t umem_frame_free;
@@ -288,6 +291,14 @@ static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct x
     xsk_info->peer_addr.sin_port = htons(12345);
     inet_pton(AF_INET, "192.168.43.62", &xsk_info->peer_addr.sin_addr);
 
+    // Create a socket for sending acknowledgments
+    xsk_info->ack_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (xsk_info->ack_sock < 0)
+    {
+        perror("ERROR: Failed to create ACK socket");
+        goto error_exit;
+    }
+
     return xsk_info;
 
 error_exit:
@@ -370,7 +381,9 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     printf("File name: %s\n", cust_pkt->file_name);
     printf("Sequence number: %d\n", ntohl(cust_pkt->sequence_number));
     printf("Total chunks: %d\n", ntohl(cust_pkt->total_chunks));
+    // printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
 
+    // Store the message part
     int total_chunks = ntohl(cust_pkt->total_chunks);
     int sequence_number = ntohl(cust_pkt->sequence_number);
     // I don't know why, but i need to substract 16 for some reason
@@ -386,6 +399,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
                 fprintf(stderr, "ERROR: Failed to allocate memory for message chunk\n");
                 return false;
             }
+            printf("message_length=%d\n", message_length);
             if (message_length > BUFFER_SIZE - 15)
             {
                 message_length = BUFFER_SIZE - 15;
@@ -393,6 +407,12 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             memcpy(received_messages[sequence_number]->message, cust_pkt->message, message_length);
             received_messages[sequence_number]->length = message_length;
             printf("Stored chunk with sequence number: %d\n", sequence_number);
+
+            // Send acknowledgment
+            struct ack_packet ack;
+            ack.sequence_number = htonl(sequence_number);
+            sendto(xsk->ack_sock, &ack, sizeof(ack), 0, (struct sockaddr *)&xsk->peer_addr, sizeof(xsk->peer_addr));
+            printf("Sent ACK for sequence number: %d\n", sequence_number);
         }
         else
         {
@@ -406,13 +426,8 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
 
     check_and_create_file(cust_pkt->file_name, total_chunks);
 
-    // Send acknowledgment
-    struct ack_packet ack;
-    ack.sequence_number = htonl(sequence_number);
-    printf("I think we are sending seq:%d\n", sequence_number);
-    sendto(xsk_socket__fd(xsk->xsk), &ack, sizeof(ack), 0, (struct sockaddr *)&xsk->peer_addr, sizeof(xsk->peer_addr));
-
-    // Free the frame
+    // Process the packet further as needed
+    // For now, we just free the frame
     xsk_free_umem_frame(xsk, addr);
     return true;
 }
