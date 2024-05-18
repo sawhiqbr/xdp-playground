@@ -1,5 +1,4 @@
 """ --------------------- RECEIVER --------------------- """
-""" Please comment your code thoroughly, on what your implementation does rather than how. """
 import socket
 import hashlib
 import threading
@@ -9,7 +8,6 @@ import sys
 import queue
 
 BUFFER_SIZE        = 1024
-### WARNING! PLEASE SET THESE VALUES ACCORDING TO THE REPORT BEFORE RUNNING ###
 
 SERVER_ADDRESS_PORT = (socket.gethostbyname("server"), 20002)
 CURRENT_DIRECTORY  = os.getcwd()
