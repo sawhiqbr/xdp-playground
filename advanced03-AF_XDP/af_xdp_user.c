@@ -30,6 +30,9 @@
 #include <linux/ip.h>
 #include <linux/udp.h>
 
+#include <sys/stat.h>
+#include <sys/types.h>
+
 #include "../common/common_params.h"
 #include "../common/common_user_bpf_xdp.h"
 #include "../common/common_libbpf.h"
@@ -40,6 +43,14 @@
 #define INVALID_UMEM_FRAME UINT64_MAX
 
 #define BUFFER_SIZE 1024
+#define MAX_CHUNKS 10000
+
+struct packet_message
+{
+    char message[BUFFER_SIZE - 15];
+};
+
+static struct packet_message *received_messages[MAX_CHUNKS];
 
 // UDP packet structure
 struct udp_custom_packet
@@ -49,6 +60,8 @@ struct udp_custom_packet
     int total_chunks;
     char message[BUFFER_SIZE - 15];
 };
+
+static struct packet_message *received_messages[MAX_CHUNKS];
 
 static struct xdp_program *prog;
 int xsk_map_fd;
@@ -77,6 +90,68 @@ struct xsk_socket_info
 
     uint32_t outstanding_tx;
 };
+
+void check_and_create_file(const char *file_name, int total_chunks)
+{
+    // Check if all chunks are received
+    for (int i = 1; i <= total_chunks; i++)
+    {
+        if (received_messages[i] == NULL)
+        {
+            return; // Exit if any chunk is missing
+        }
+    }
+
+    // All chunks are received, create the file
+    char file_path[256];
+    snprintf(file_path, sizeof(file_path), "received_objects/%s", file_name);
+
+    // Create the directory if it doesn't exist
+    mkdir("received_objects", 0777);
+
+    FILE *file = fopen(file_path, "wb");
+    if (file == NULL)
+    {
+        fprintf(stderr, "ERROR: Failed to create file %s\n", file_path);
+        return;
+    }
+
+    // Write the chunks to the file
+    for (int i = 1; i <= total_chunks; i++)
+    {
+        fwrite(received_messages[i]->message, 1, sizeof(received_messages[i]->message), file);
+    }
+
+    fclose(file);
+    printf("File %s created successfully\n", file_path);
+
+    // Free the chunks after writing
+    for (int i = 1; i <= total_chunks; i++)
+    {
+        free(received_messages[i]);
+        received_messages[i] = NULL;
+    }
+}
+
+void init_message_storage()
+{
+    for (int i = 0; i < MAX_CHUNKS; i++)
+    {
+        received_messages[i] = NULL;
+    }
+}
+
+void free_message_storage()
+{
+    for (int i = 0; i < MAX_CHUNKS; i++)
+    {
+        if (received_messages[i] != NULL)
+        {
+            free(received_messages[i]);
+            received_messages[i] = NULL;
+        }
+    }
+}
 
 static inline __u32 xsk_ring_prod__free(struct xsk_ring_prod *r)
 {
@@ -282,11 +357,35 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     printf("File name: %s\n", cust_pkt->file_name);
     printf("Sequence number: %d\n", ntohl(cust_pkt->sequence_number));
     printf("Total chunks: %d\n", ntohl(cust_pkt->total_chunks));
-    printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
+    // printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
 
-    // uint8_t *payload = (uint8_t *)(udph + 1);
-    // uint32_t payload_len = ntohs(udph->len) - sizeof(*udph);
-    // printf("Received UDP payload: %.*s\n", payload_len, payload);
+    // Store the message part
+    int total_chunks = ntohl(cust_pkt->total_chunks);
+    int sequence_number = ntohl(cust_pkt->sequence_number);
+    if (sequence_number < MAX_CHUNKS)
+    {
+        if (received_messages[sequence_number] == NULL)
+        {
+            received_messages[sequence_number] = (struct packet_message *)malloc(sizeof(struct packet_message));
+            if (received_messages[sequence_number] == NULL)
+            {
+                fprintf(stderr, "ERROR: Failed to allocate memory for message chunk\n");
+                return false;
+            }
+            memcpy(received_messages[sequence_number]->message, cust_pkt->message, BUFFER_SIZE - 15);
+            printf("Stored chunk with sequence number: %d\n", sequence_number);
+        }
+        else
+        {
+            printf("Duplicate chunk with sequence number: %d\n", sequence_number);
+        }
+    }
+    else
+    {
+        printf("Sequence number %d out of bounds\n", sequence_number);
+    }
+
+    check_and_create_file(cust_pkt->file_name, total_chunks);
 
     // Process the packet further as needed
     // For now, we just free the frame
@@ -370,6 +469,7 @@ static void exit_application(int signal)
     }
 
     signal = signal;
+    free_message_storage();
     global_exit = true;
 }
 
@@ -472,6 +572,9 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
 
+    /* Initialize chunks storage */
+    init_message_storage();
+
     /* Open and configure the AF_XDP (xsk) socket */
     xsk_socket = xsk_configure_socket(&cfg, umem);
     if (xsk_socket == NULL)
@@ -487,5 +590,6 @@ int main(int argc, char **argv)
     xsk_socket__delete(xsk_socket->xsk);
     xsk_umem__delete(umem->umem);
 
+    free_message_storage();
     return EXIT_OK;
 }
