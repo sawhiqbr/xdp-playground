@@ -33,26 +33,30 @@ int xdp_sock_prog(struct xdp_md *ctx)
     bpf_trace_printk("Packet received on queue %d\n", sizeof("Packet received on queue %d\n"), index);
 
     // packet data is at least the size of an Ethernet header
-    if (data + sizeof(struct ethhdr) > data_end) {
+    if (data + sizeof(struct ethhdr) > data_end)
+    {
         bpf_trace_printk("Packet size is smaller than Ethernet header\n", sizeof("Packet size is smaller than Ethernet header\n"));
         return XDP_PASS;
     }
 
     // Ethernet frame is an IP packet
-    if (eth->h_proto != bpf_htons(ETH_P_IP)) {
+    if (eth->h_proto != bpf_htons(ETH_P_IP))
+    {
         bpf_trace_printk("Ethernet frame is not IP, protocol: %x\n", sizeof("Ethernet frame is not IP, protocol: %x\n"), bpf_ntohs(eth->h_proto));
         return XDP_PASS;
     }
 
     // packet data is at least the size of an IP header
     iph = data + sizeof(struct ethhdr);
-    if ((void *)iph + sizeof(struct iphdr) > data_end) {
+    if ((void *)iph + sizeof(struct iphdr) > data_end)
+    {
         bpf_trace_printk("Packet size is smaller than IP header\n", sizeof("Packet size is smaller than IP header\n"));
         return XDP_PASS;
     }
 
     // IP packet is a UDP packet
-    if (iph->protocol != IPPROTO_UDP) {
+    if (iph->protocol != IPPROTO_UDP)
+    {
         bpf_trace_printk("IP packet is not UDP, protocol: %x\n", sizeof("IP packet is not UDP, protocol: %x\n"), iph->protocol);
         return XDP_PASS;
     }
@@ -65,7 +69,8 @@ int xdp_sock_prog(struct xdp_md *ctx)
 
     // packet data is at least the size of a UDP header
     udph = (void *)iph + sizeof(struct iphdr);
-    if ((void *)udph + sizeof(struct udphdr) > data_end) {
+    if ((void *)udph + sizeof(struct udphdr) > data_end)
+    {
         bpf_trace_printk("Packet size is smaller than UDP header\n", sizeof("Packet size is smaller than UDP header\n"));
         return XDP_PASS;
     }

@@ -45,14 +45,16 @@ struct config cfg = {
     .ifindex = -1,
 };
 
-struct xsk_umem_info {
+struct xsk_umem_info
+{
     struct xsk_ring_prod fq;
     struct xsk_ring_cons cq;
     struct xsk_umem *umem;
     void *buffer;
 };
 
-struct xsk_socket_info {
+struct xsk_socket_info
+{
     struct xsk_ring_cons rx;
     struct xsk_ring_prod tx;
     struct xsk_umem_info *umem;
@@ -64,7 +66,8 @@ struct xsk_socket_info {
     uint32_t outstanding_tx;
 };
 
-static inline __u32 xsk_ring_prod__free(struct xsk_ring_prod *r) {
+static inline __u32 xsk_ring_prod__free(struct xsk_ring_prod *r)
+{
     r->cached_cons = *r->consumer + r->size;
     return r->cached_cons - r->cached_prod;
 }
@@ -85,12 +88,12 @@ static const struct option_wrapper long_options[] = {
     {{"quiet", no_argument, NULL, 'q'}, "Quiet mode (no output)"},
     {{"filename", required_argument, NULL, 1}, "Load program from <file>", "<file>"},
     {{"progname", required_argument, NULL, 2}, "Load program from function <name> in the ELF file", "<name>"},
-    {{0, 0, NULL, 0}, NULL, false}
-};
+    {{0, 0, NULL, 0}, NULL, false}};
 
 static bool global_exit;
 
-static struct xsk_umem_info *configure_xsk_umem(void *buffer, uint64_t size) {
+static struct xsk_umem_info *configure_xsk_umem(void *buffer, uint64_t size)
+{
     struct xsk_umem_info *umem;
     int ret;
 
@@ -99,7 +102,8 @@ static struct xsk_umem_info *configure_xsk_umem(void *buffer, uint64_t size) {
         return NULL;
 
     ret = xsk_umem__create(&umem->umem, buffer, size, &umem->fq, &umem->cq, NULL);
-    if (ret) {
+    if (ret)
+    {
         errno = -ret;
         return NULL;
     }
@@ -108,7 +112,8 @@ static struct xsk_umem_info *configure_xsk_umem(void *buffer, uint64_t size) {
     return umem;
 }
 
-static uint64_t xsk_alloc_umem_frame(struct xsk_socket_info *xsk) {
+static uint64_t xsk_alloc_umem_frame(struct xsk_socket_info *xsk)
+{
     uint64_t frame;
     if (xsk->umem_frame_free == 0)
         return INVALID_UMEM_FRAME;
@@ -118,17 +123,20 @@ static uint64_t xsk_alloc_umem_frame(struct xsk_socket_info *xsk) {
     return frame;
 }
 
-static void xsk_free_umem_frame(struct xsk_socket_info *xsk, uint64_t frame) {
+static void xsk_free_umem_frame(struct xsk_socket_info *xsk, uint64_t frame)
+{
     assert(xsk->umem_frame_free < NUM_FRAMES);
 
     xsk->umem_frame_addr[xsk->umem_frame_free++] = frame;
 }
 
-static uint64_t xsk_umem_free_frames(struct xsk_socket_info *xsk) {
+static uint64_t xsk_umem_free_frames(struct xsk_socket_info *xsk)
+{
     return xsk->umem_frame_free;
 }
 
-static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct xsk_umem_info *umem) {
+static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct xsk_umem_info *umem)
+{
     struct xsk_socket_config xsk_cfg;
     struct xsk_socket_info *xsk_info;
     uint32_t idx;
@@ -150,11 +158,14 @@ static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct x
     if (ret)
         goto error_exit;
 
-    if (custom_xsk) {
+    if (custom_xsk)
+    {
         ret = xsk_socket__update_xskmap(xsk_info->xsk, xsk_map_fd);
         if (ret)
             goto error_exit;
-    } else {
+    }
+    else
+    {
         /* Getting the program ID must be after the xdp_socket__create() call */
         if (bpf_xdp_query_id(cfg->ifindex, cfg->xdp_flags, &prog_id))
             goto error_exit;
@@ -184,7 +195,8 @@ error_exit:
     return NULL;
 }
 
-static void complete_tx(struct xsk_socket_info *xsk) {
+static void complete_tx(struct xsk_socket_info *xsk)
+{
     unsigned int completed;
     uint32_t idx_cq;
 
@@ -196,7 +208,8 @@ static void complete_tx(struct xsk_socket_info *xsk) {
     /* Collect/free completed TX buffers */
     completed = xsk_ring_cons__peek(&xsk->umem->cq, XSK_RING_CONS__DEFAULT_NUM_DESCS, &idx_cq);
 
-    if (completed > 0) {
+    if (completed > 0)
+    {
         for (int i = 0; i < completed; i++)
             xsk_free_umem_frame(xsk, *xsk_ring_cons__comp_addr(&xsk->umem->cq, idx_cq++));
 
@@ -205,35 +218,41 @@ static void complete_tx(struct xsk_socket_info *xsk) {
     }
 }
 
-static inline __sum16 csum16_add(__sum16 csum, __be16 addend) {
+static inline __sum16 csum16_add(__sum16 csum, __be16 addend)
+{
     uint16_t res = (uint16_t)csum;
 
     res += (__u16)addend;
     return (__sum16)(res + (res < (__u16)addend));
 }
 
-static inline __sum16 csum16_sub(__sum16 csum, __be16 addend) {
+static inline __sum16 csum16_sub(__sum16 csum, __be16 addend)
+{
     return csum16_add(csum, ~addend);
 }
 
-static inline void csum_replace2(__sum16 *sum, __be16 old, __be16 new) {
+static inline void csum_replace2(__sum16 *sum, __be16 old, __be16 new)
+{
     *sum = ~csum16_add(csum16_sub(~(*sum), old), new);
 }
 
-static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len) {
+static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
+{
     uint8_t *pkt = xsk_umem__get_data(xsk->umem->buffer, addr);
 
     struct ethhdr *eth = (struct ethhdr *)pkt;
-	// shouldn't need this check
-    if (ntohs(eth->h_proto) != ETH_P_IP) {
-		printf("Shouldn't have end up here\n");
+    // shouldn't need this check
+    if (ntohs(eth->h_proto) != ETH_P_IP)
+    {
+        printf("Shouldn't have end up here\n");
         return false;
     }
 
     struct iphdr *iph = (struct iphdr *)(eth + 1);
-	// shouldn't need this check
-    if (iph->protocol != IPPROTO_UDP) {
-		printf("Shouldn't have end up here\n");
+    // shouldn't need this check
+    if (iph->protocol != IPPROTO_UDP)
+    {
+        printf("Shouldn't have end up here\n");
         return false;
     }
 
@@ -249,7 +268,8 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     return true;
 }
 
-static void handle_receive_packets(struct xsk_socket_info *xsk) {
+static void handle_receive_packets(struct xsk_socket_info *xsk)
+{
     unsigned int rcvd, stock_frames, i;
     uint32_t idx_rx = 0, idx_fq = 0;
     int ret;
@@ -261,7 +281,8 @@ static void handle_receive_packets(struct xsk_socket_info *xsk) {
     /* Stuff the ring with as much frames as possible */
     stock_frames = xsk_prod_nb_free(&xsk->umem->fq, xsk_umem_free_frames(xsk));
 
-    if (stock_frames > 0) {
+    if (stock_frames > 0)
+    {
         ret = xsk_ring_prod__reserve(&xsk->umem->fq, stock_frames, &idx_fq);
 
         /* This should not happen, but just in case */
@@ -275,7 +296,8 @@ static void handle_receive_packets(struct xsk_socket_info *xsk) {
     }
 
     /* Process received packets */
-    for (i = 0; i < rcvd; i++) {
+    for (i = 0; i < rcvd; i++)
+    {
         uint64_t addr = xsk_ring_cons__rx_desc(&xsk->rx, idx_rx)->addr;
         uint32_t len = xsk_ring_cons__rx_desc(&xsk->rx, idx_rx++)->len;
 
@@ -289,7 +311,8 @@ static void handle_receive_packets(struct xsk_socket_info *xsk) {
     complete_tx(xsk);
 }
 
-static void rx_and_process(struct config *cfg, struct xsk_socket_info *xsk_socket) {
+static void rx_and_process(struct config *cfg, struct xsk_socket_info *xsk_socket)
+{
     struct pollfd fds[2];
     int ret, nfds = 1;
 
@@ -297,8 +320,10 @@ static void rx_and_process(struct config *cfg, struct xsk_socket_info *xsk_socke
     fds[0].fd = xsk_socket__fd(xsk_socket->xsk);
     fds[0].events = POLLIN;
 
-    while (!global_exit) {
-        if (cfg->xsk_poll_mode) {
+    while (!global_exit)
+    {
+        if (cfg->xsk_poll_mode)
+        {
             ret = poll(fds, nfds, -1);
             if (ret <= 0 || ret > 1)
                 continue;
@@ -307,12 +332,14 @@ static void rx_and_process(struct config *cfg, struct xsk_socket_info *xsk_socke
     }
 }
 
-static void exit_application(int signal) {
+static void exit_application(int signal)
+{
     int err;
 
     cfg.unload_all = true;
     err = do_unload(&cfg);
-    if (err) {
+    if (err)
+    {
         fprintf(stderr, "Couldn't detach XDP program on iface '%s' : (%d)\n", cfg.ifname, err);
     }
 
@@ -320,7 +347,8 @@ static void exit_application(int signal) {
     global_exit = true;
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
     void *packet_buffer;
     uint64_t packet_buffer_size;
     DECLARE_LIBBPF_OPTS(bpf_object_open_opts, opts);
@@ -328,8 +356,8 @@ int main(int argc, char **argv) {
     struct rlimit rlim = {RLIM_INFINITY, RLIM_INFINITY};
     struct xsk_umem_info *umem;
     struct xsk_socket_info *xsk_socket;
-	int err;
-	char errmsg[1024];
+    int err;
+    char errmsg[1024];
 
     /* Global shutdown handler */
     signal(SIGINT, exit_application);
@@ -338,14 +366,16 @@ int main(int argc, char **argv) {
     parse_cmdline_args(argc, argv, long_options, &cfg, __doc__);
 
     /* Required option */
-    if (cfg.ifindex == -1) {
+    if (cfg.ifindex == -1)
+    {
         fprintf(stderr, "ERROR: Required option --dev missing\n\n");
         usage(argv[0], __doc__, long_options, (argc == 1));
         return EXIT_FAIL_OPTION;
     }
 
     /* Load custom program if configured */
-    if (cfg.filename[0] != 0) {
+    if (cfg.filename[0] != 0)
+    {
         struct bpf_map *map;
 
         custom_xsk = true;
@@ -353,24 +383,29 @@ int main(int argc, char **argv) {
         xdp_opts.prog_name = cfg.progname;
         xdp_opts.opts = &opts;
 
-        if (cfg.progname[0] != 0) {
+        if (cfg.progname[0] != 0)
+        {
             xdp_opts.open_filename = cfg.filename;
             xdp_opts.prog_name = cfg.progname;
             xdp_opts.opts = &opts;
 
             prog = xdp_program__create(&xdp_opts);
-        } else {
+        }
+        else
+        {
             prog = xdp_program__open_file(cfg.filename, NULL, &opts);
         }
         err = libxdp_get_error(prog);
-        if (err) {
+        if (err)
+        {
             libxdp_strerror(err, errmsg, sizeof(errmsg));
             fprintf(stderr, "ERR: loading program: %s\n", errmsg);
             return err;
         }
 
         err = xdp_program__attach(prog, cfg.ifindex, cfg.attach_mode, 0);
-        if (err) {
+        if (err)
+        {
             libxdp_strerror(err, errmsg, sizeof(errmsg));
             fprintf(stderr, "Couldn't attach XDP program on iface '%s' : %s (%d)\n", cfg.ifname, errmsg, err);
             return err;
@@ -379,7 +414,8 @@ int main(int argc, char **argv) {
         /* We also need to load the xsks_map */
         map = bpf_object__find_map_by_name(xdp_program__bpf_obj(prog), "xsks_map");
         xsk_map_fd = bpf_map__fd(map);
-        if (xsk_map_fd < 0) {
+        if (xsk_map_fd < 0)
+        {
             fprintf(stderr, "ERROR: no xsks map found: %s\n", strerror(xsk_map_fd));
             exit(EXIT_FAILURE);
         }
@@ -388,28 +424,32 @@ int main(int argc, char **argv) {
     /* Allow unlimited locking of memory, so all memory needed for packet
      * buffers can be locked.
      */
-    if (setrlimit(RLIMIT_MEMLOCK, &rlim)) {
+    if (setrlimit(RLIMIT_MEMLOCK, &rlim))
+    {
         fprintf(stderr, "ERROR: setrlimit(RLIMIT_MEMLOCK) \"%s\"\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     /* Allocate memory for NUM_FRAMES of the default XDP frame size */
     packet_buffer_size = NUM_FRAMES * FRAME_SIZE;
-    if (posix_memalign(&packet_buffer, getpagesize(), packet_buffer_size)) {
+    if (posix_memalign(&packet_buffer, getpagesize(), packet_buffer_size))
+    {
         fprintf(stderr, "ERROR: Can't allocate buffer memory \"%s\"\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     /* Initialize shared packet_buffer for umem usage */
     umem = configure_xsk_umem(packet_buffer, packet_buffer_size);
-    if (umem == NULL) {
+    if (umem == NULL)
+    {
         fprintf(stderr, "ERROR: Can't create umem \"%s\"\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     /* Open and configure the AF_XDP (xsk) socket */
     xsk_socket = xsk_configure_socket(&cfg, umem);
-    if (xsk_socket == NULL) {
+    if (xsk_socket == NULL)
+    {
         fprintf(stderr, "ERROR: Can't setup AF_XDP socket \"%s\"\n", strerror(errno));
         exit(EXIT_FAILURE);
     }
