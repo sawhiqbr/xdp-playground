@@ -48,6 +48,7 @@
 struct packet_message
 {
     char message[BUFFER_SIZE - 15];
+    int length;
 };
 
 static struct packet_message *received_messages[MAX_CHUNKS];
@@ -104,7 +105,7 @@ void check_and_create_file(const char *file_name, int total_chunks)
 
     // All chunks are received, create the file
     char file_path[256];
-    snprintf(file_path, sizeof(file_path), "received_objects/%s", file_name);
+    snprintf(file_path, sizeof(file_path), "received_objects/%s.obj", file_name);
 
     // Create the directory if it doesn't exist
     mkdir("received_objects", 0777);
@@ -119,7 +120,7 @@ void check_and_create_file(const char *file_name, int total_chunks)
     // Write the chunks to the file
     for (int i = 1; i <= total_chunks; i++)
     {
-        fwrite(received_messages[i]->message, 1, sizeof(received_messages[i]->message), file);
+        fwrite(received_messages[i]->message, 1, received_messages[i]->length, file);
     }
 
     fclose(file);
@@ -360,8 +361,12 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     // printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
 
     // Store the message part
+    // Store the message part
     int total_chunks = ntohl(cust_pkt->total_chunks);
     int sequence_number = ntohl(cust_pkt->sequence_number);
+    // I don't know why, but i need to substract 16 for some reason
+    int message_length = len - sizeof(struct ethhdr) - sizeof(struct iphdr) - sizeof(struct udphdr) - 16;
+
     if (sequence_number < MAX_CHUNKS)
     {
         if (received_messages[sequence_number] == NULL)
@@ -372,7 +377,13 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
                 fprintf(stderr, "ERROR: Failed to allocate memory for message chunk\n");
                 return false;
             }
-            memcpy(received_messages[sequence_number]->message, cust_pkt->message, BUFFER_SIZE - 15);
+            printf("message_length=%d\n", message_length);
+            if (message_length > BUFFER_SIZE - 15)
+            {
+                message_length = BUFFER_SIZE - 15;
+            }
+            memcpy(received_messages[sequence_number]->message, cust_pkt->message, message_length);
+            received_messages[sequence_number]->length = message_length;
             printf("Stored chunk with sequence number: %d\n", sequence_number);
         }
         else
