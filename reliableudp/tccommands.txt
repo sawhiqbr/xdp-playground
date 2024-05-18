@@ -1,0 +1,24 @@
+•Benchmark, no tc/netem rules applied
+  tc qdisc del dev eth0 root && tc qdisc show
+
+•Packet loss: 0%, 5%, 10%, 15%
+  tc qdisc add dev eth0 root netem loss 5% && tc qdisc show
+--- or dont forget to delete fist, will throw error if already deleted ---
+  tc qdisc del dev eth0 root && tc qdisc add dev eth0 root netem loss 5% && tc qdisc show
+
+•Packet duplication: 0%, 5%, 10%
+  tc qdisc add dev eth0 root netem duplicate 5% && tc qdisc show
+--- or dont forget to delete fist, will throw error if already deleted ---
+  tc qdisc del dev eth0 root && tc qdisc add dev eth0 root netem duplicate 5% && tc qdisc show
+
+•Packet corruption: 0%, 5%, 10%
+  tc qdisc add dev eth0 root netem corrupt 5% && tc qdisc show
+--- or dont forget to delete fist, will throw error if already deleted ---
+  tc qdisc del dev eth0 root && tc qdisc add dev eth0 root netem corrupt 5% && tc qdisc show
+
+•Packet delay: 100ms - uniform distribution, 100ms - normal distribution
+  tc qdisc add dev eth0 root netem delay 100ms 50ms distribution uniform && tc qdisc show
+  tc qdisc add dev eth0 root netem delay 100ms 50ms distribution normal && tc qdisc show
+--- or dont forget to delete fist, will throw error if already deleted ---
+  tc qdisc del dev eth0 root && tc qdisc add dev eth0 root netem delay 100ms 50ms && tc qdisc show
+  tc qdisc del dev eth0 root && tc qdisc add dev eth0 root netem delay 100ms 50ms distribution normal && tc qdisc show
