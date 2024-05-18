@@ -45,9 +45,9 @@
 struct udp_custom_packet
 {
     char file_name[8];
-    uint32_t sequence_number;
-    uint32_t total_chunks;
-    uint8_t message[BUFFER_SIZE - 15];
+    int sequence_number;
+    int total_chunks;
+    char message[BUFFER_SIZE - 15];
 };
 
 static struct xdp_program *prog;
@@ -248,6 +248,15 @@ static inline void csum_replace2(__sum16 *sum, __be16 old, __be16 new)
     *sum = ~csum16_add(csum16_sub(~(*sum), old), new);
 }
 
+void print_raw_bytes(uint8_t *data, uint32_t len)
+{
+    for (uint32_t i = 0; i < len; i++)
+    {
+        printf("%02x ", data[i]);
+    }
+    printf("\n");
+}
+
 static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
 {
     uint8_t *pkt = xsk_umem__get_data(xsk->umem->buffer, addr);
@@ -271,9 +280,9 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
 
     printf("Received UDP packet:\n");
     printf("File name: %s\n", cust_pkt->file_name);
-    printf("Sequence number: %u\n", ntohl(cust_pkt->sequence_number));
-    printf("Total chunks: %u\n", ntohl(cust_pkt->total_chunks));
-    printf("Message: %.*s\n", len - sizeof(struct udphdr) - sizeof(struct udp_custom_packet) + sizeof(cust_pkt->message), cust_pkt->message);
+    printf("Sequence number: %d\n", ntohl(cust_pkt->sequence_number));
+    printf("Total chunks: %d\n", ntohl(cust_pkt->total_chunks));
+    printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
 
     // uint8_t *payload = (uint8_t *)(udph + 1);
     // uint32_t payload_len = ntohs(udph->len) - sizeof(*udph);
