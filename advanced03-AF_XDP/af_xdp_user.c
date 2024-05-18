@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
@@ -37,6 +38,17 @@
 #define FRAME_SIZE XSK_UMEM__DEFAULT_FRAME_SIZE
 #define RX_BATCH_SIZE 64
 #define INVALID_UMEM_FRAME UINT64_MAX
+
+#define BUFFER_SIZE 1024
+
+// UDP packet structure
+struct udp_custom_packet
+{
+    char file_name[8];
+    uint32_t sequence_number;
+    uint32_t total_chunks;
+    uint8_t message[BUFFER_SIZE - 15];
+};
 
 static struct xdp_program *prog;
 int xsk_map_fd;
@@ -241,26 +253,31 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     uint8_t *pkt = xsk_umem__get_data(xsk->umem->buffer, addr);
 
     struct ethhdr *eth = (struct ethhdr *)pkt;
-    // shouldn't need this check
     if (ntohs(eth->h_proto) != ETH_P_IP)
     {
-        printf("Shouldn't have end up here\n");
+        printf("Shouldn't have end up here: we arent ethernet\n");
         return false;
     }
 
     struct iphdr *iph = (struct iphdr *)(eth + 1);
-    // shouldn't need this check
     if (iph->protocol != IPPROTO_UDP)
     {
-        printf("Shouldn't have end up here\n");
+        printf("Shouldn't have end up here: we arent udp\n");
         return false;
     }
 
     struct udphdr *udph = (struct udphdr *)((uint8_t *)iph + sizeof(*iph));
-    uint8_t *payload = (uint8_t *)(udph + 1);
-    uint32_t payload_len = ntohs(udph->len) - sizeof(*udph);
+    struct udp_custom_packet *cust_pkt = (struct udp_custom_packet *)(udph + 1);
 
-    printf("Received UDP payload: %.*s\n", payload_len, payload);
+    printf("Received UDP packet:\n");
+    printf("File name: %s\n", cust_pkt->file_name);
+    printf("Sequence number: %u\n", ntohl(cust_pkt->sequence_number));
+    printf("Total chunks: %u\n", ntohl(cust_pkt->total_chunks));
+    printf("Message: %.*s\n", len - sizeof(struct udphdr) - sizeof(struct udp_custom_packet) + sizeof(cust_pkt->message), cust_pkt->message);
+
+    // uint8_t *payload = (uint8_t *)(udph + 1);
+    // uint32_t payload_len = ntohs(udph->len) - sizeof(*udph);
+    // printf("Received UDP payload: %.*s\n", payload_len, payload);
 
     // Process the packet further as needed
     // For now, we just free the frame
