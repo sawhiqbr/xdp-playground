@@ -47,6 +47,8 @@
 #define BUFFER_SIZE 1024
 #define MAX_CHUNKS 10000
 
+bool files_done[20];
+
 struct packet_message
 {
     char message[BUFFER_SIZE - 15];
@@ -58,8 +60,6 @@ struct ack_packet
     int sequence_number;
 };
 
-static struct packet_message *received_messages[MAX_CHUNKS];
-
 // UDP packet structure
 struct udp_custom_packet
 {
@@ -69,7 +69,16 @@ struct udp_custom_packet
     char message[BUFFER_SIZE - 15];
 };
 
-static struct packet_message *received_messages[MAX_CHUNKS];
+struct file_info
+{
+    struct packet_message *received_messages[MAX_CHUNKS];
+    char file_name[8];
+    int total_chunks;
+    int rcvd_chunks;
+    bool done;
+};
+
+static struct file_info files[20];
 
 static struct xdp_program *prog;
 int xsk_map_fd;
@@ -101,64 +110,92 @@ struct xsk_socket_info
     uint32_t outstanding_tx;
 };
 
-void check_and_create_file(const char *file_name, int total_chunks)
+void init_files()
 {
-    // Check if all chunks are received
-    for (int i = 1; i <= total_chunks; i++)
+    for (int i = 0; i < 10; i++)
     {
-        if (received_messages[i] == NULL)
+        snprintf(files[i].file_name, sizeof(files[i].file_name), "small-%d", i + 1);
+        files[i].total_chunks = 0;
+        files[i].rcvd_chunks = 0;
+        files[i].done = false;
+        memset(files[i].received_messages, 0, sizeof(files[i].received_messages));
+    }
+
+    for (int i = 0; i < 10; i++)
+    {
+        snprintf(files[10 + i].file_name, sizeof(files[10 + i].file_name), "large-%d", i + 1);
+        files[10 + i].total_chunks = 0;
+        files[10 + i].rcvd_chunks = 0;
+        files[i].done = false;
+        memset(files[10 + i].received_messages, 0, sizeof(files[10 + i].received_messages));
+    }
+}
+
+void check_and_create_file()
+{
+    // For each file
+    for (int i = 0; i < 20; i++)
+    {
+        if (files[i].done)
+            continue;
+
+        if (files[i].total_chunks == 0)
+            continue;
+        else
+            printf("Total chunks for %d: %d\n", i, files[i].total_chunks);
+
+        if (files[i].total_chunks != files[i].rcvd_chunks)
+            continue;
+
+        printf("Somehow file reached here %d\n", i);
+        // All chunks are received, create the file
+        char file_path[256];
+        snprintf(file_path, sizeof(file_path), "received_objects/%s.obj", files[i].file_name);
+
+        // Create the directory if it doesn't exist
+        mkdir("received_objects", 0777);
+
+        FILE *file = fopen(file_path, "wb");
+        if (file == NULL)
         {
-            return; // Exit if any chunk is missing
+            fprintf(stderr, "ERROR: Failed to create file %s\n", file_path);
+            return;
         }
-    }
 
-    // All chunks are received, create the file
-    char file_path[256];
-    snprintf(file_path, sizeof(file_path), "received_objects/%s.obj", file_name);
+        // Write the chunks to the file
+        for (int j = 1; j <= files[i].total_chunks; j++)
+        {
+            fwrite(files[i].received_messages[j]->message, 1, files[i].received_messages[j]->length, file);
+        }
 
-    // Create the directory if it doesn't exist
-    mkdir("received_objects", 0777);
-
-    FILE *file = fopen(file_path, "wb");
-    if (file == NULL)
-    {
-        fprintf(stderr, "ERROR: Failed to create file %s\n", file_path);
-        return;
-    }
-
-    // Write the chunks to the file
-    for (int i = 1; i <= total_chunks; i++)
-    {
-        fwrite(received_messages[i]->message, 1, received_messages[i]->length, file);
-    }
-
-    fclose(file);
-    printf("File %s created successfully\n", file_path);
-
-    // Free the chunks after writing
-    for (int i = 1; i <= total_chunks; i++)
-    {
-        free(received_messages[i]);
-        received_messages[i] = NULL;
+        fclose(file);
+        printf("File %s created successfully\n", file_path);
+        files[i].done = true;
     }
 }
 
 void init_message_storage()
 {
-    for (int i = 0; i < MAX_CHUNKS; i++)
+    for (int i = 0; i < 20; i++)
     {
-        received_messages[i] = NULL;
+        for (int j = 0; j < MAX_CHUNKS; j++)
+        {
+            files[i].received_messages[j] = NULL;
+        }
     }
 }
 
 void free_message_storage()
 {
-    for (int i = 0; i < MAX_CHUNKS; i++)
+    for (int i = 0; i < 20; i++)
     {
-        if (received_messages[i] != NULL)
+        for (int j = 0; j < MAX_CHUNKS; j++)
         {
-            free(received_messages[i]);
-            received_messages[i] = NULL;
+            if (files[i].received_messages[j] != NULL)
+            {
+                free(files[i].received_messages[j]);
+                files[i].received_messages[j] = NULL;
+            }
         }
     }
 }
@@ -289,7 +326,7 @@ static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct x
     memset(&xsk_info->peer_addr, 0, sizeof(xsk_info->peer_addr));
     xsk_info->peer_addr.sin_family = AF_INET;
     xsk_info->peer_addr.sin_port = htons(12345);
-    inet_pton(AF_INET, "192.168.43.62", &xsk_info->peer_addr.sin_addr);
+    inet_pton(AF_INET, "144.122.250.233", &xsk_info->peer_addr.sin_addr);
 
     // Create a socket for sending acknowledgments
     xsk_info->ack_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -387,14 +424,24 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     int total_chunks = ntohl(cust_pkt->total_chunks);
     int sequence_number = ntohl(cust_pkt->sequence_number);
     // I don't know why, but i need to substract 16 for some reason
+    // I know now, it's about how we construct the file_name (8 bits instead of 7)
     int message_length = len - sizeof(struct ethhdr) - sizeof(struct iphdr) - sizeof(struct udphdr) - 16;
 
-    if (sequence_number < MAX_CHUNKS)
+    if (sequence_number < MAX_CHUNKS * 20)
     {
-        if (received_messages[sequence_number] == NULL)
+        int file_index = 0;
+        for (; file_index < 19; file_index++)
         {
-            received_messages[sequence_number] = (struct packet_message *)malloc(sizeof(struct packet_message));
-            if (received_messages[sequence_number] == NULL)
+            if (strcmp(files[file_index].file_name, cust_pkt->file_name) == 0)
+                break;
+        }
+        printf("File name is: %s\n", cust_pkt->file_name);
+        files[file_index].total_chunks = total_chunks;
+        files[file_index].rcvd_chunks++;
+        if (files[file_index].received_messages[sequence_number] == NULL)
+        {
+            files[file_index].received_messages[sequence_number] = (struct packet_message *)malloc(sizeof(struct packet_message));
+            if (files[file_index].received_messages[sequence_number] == NULL)
             {
                 fprintf(stderr, "ERROR: Failed to allocate memory for message chunk\n");
                 return false;
@@ -404,8 +451,8 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             {
                 message_length = BUFFER_SIZE - 15;
             }
-            memcpy(received_messages[sequence_number]->message, cust_pkt->message, message_length);
-            received_messages[sequence_number]->length = message_length;
+            memcpy(files[file_index].received_messages[sequence_number]->message, cust_pkt->message, message_length);
+            files[file_index].received_messages[sequence_number]->length = message_length;
             printf("Stored chunk with sequence number: %d\n", sequence_number);
 
             // Send acknowledgment
@@ -424,7 +471,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
         printf("Sequence number %d out of bounds\n", sequence_number);
     }
 
-    check_and_create_file(cust_pkt->file_name, total_chunks);
+    check_and_create_file();
 
     // Process the packet further as needed
     // For now, we just free the frame
@@ -613,6 +660,8 @@ int main(int argc, char **argv)
 
     /* Initialize chunks storage */
     init_message_storage();
+
+    init_files();
 
     /* Open and configure the AF_XDP (xsk) socket */
     xsk_socket = xsk_configure_socket(&cfg, umem);
