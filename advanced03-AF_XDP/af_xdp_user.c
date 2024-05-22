@@ -46,6 +46,9 @@
 
 #define BUFFER_SIZE 1024
 #define MAX_CHUNKS 10000
+// TODO: Detect this values automatically
+#define TOTAL_CHUNKS_SMALL 10
+#define TOTAL_CHUNKS_LARGE 991
 
 bool files_done[20];
 
@@ -114,7 +117,7 @@ void init_files()
 {
     for (int i = 0; i < 10; i++)
     {
-        snprintf(files[i].file_name, sizeof(files[i].file_name), "small-%d", i + 1);
+        snprintf(files[i].file_name, sizeof(files[i].file_name), "small-%d", i);
         files[i].total_chunks = 0;
         files[i].rcvd_chunks = 0;
         files[i].done = false;
@@ -123,7 +126,7 @@ void init_files()
 
     for (int i = 0; i < 10; i++)
     {
-        snprintf(files[10 + i].file_name, sizeof(files[10 + i].file_name), "large-%d", i + 1);
+        snprintf(files[10 + i].file_name, sizeof(files[10 + i].file_name), "large-%d", i);
         files[10 + i].total_chunks = 0;
         files[10 + i].rcvd_chunks = 0;
         files[i].done = false;
@@ -141,13 +144,20 @@ void check_and_create_file()
 
         if (files[i].total_chunks == 0)
             continue;
-        else
-            printf("Total chunks for %d: %d\n", i, files[i].total_chunks);
 
         if (files[i].total_chunks != files[i].rcvd_chunks)
             continue;
 
-        printf("Somehow file reached here %d\n", i);
+        printf("%s arrived here due to %d = %d\n", files[i].file_name, files[i].total_chunks, files[i].total_chunks);
+        // if file_name.startswith("small"):
+        //     n = int(file_name.split("-")[1])
+        //     start_sequence = total_chunks * n + 1
+        //     end_sequence = total_chunks * (n + 1)
+        // else:
+        //     n = int(file_name.split("-")[1])
+        //     start_sequence = TOTAL_CHUNKS_SMALL * 10 + total_chunks * n + 1
+        //     end_sequence = TOTAL_CHUNKS_SMALL * 10 + total_chunks * (n + 1)
+
         // All chunks are received, create the file
         char file_path[256];
         snprintf(file_path, sizeof(file_path), "received_objects/%s.obj", files[i].file_name);
@@ -326,7 +336,7 @@ static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct x
     memset(&xsk_info->peer_addr, 0, sizeof(xsk_info->peer_addr));
     xsk_info->peer_addr.sin_family = AF_INET;
     xsk_info->peer_addr.sin_port = htons(12345);
-    inet_pton(AF_INET, "144.122.250.233", &xsk_info->peer_addr.sin_addr);
+    inet_pton(AF_INET, "144.122.19.97", &xsk_info->peer_addr.sin_addr);
 
     // Create a socket for sending acknowledgments
     xsk_info->ack_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -438,10 +448,27 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
         printf("File name is: %s\n", cust_pkt->file_name);
         files[file_index].total_chunks = total_chunks;
         files[file_index].rcvd_chunks++;
-        if (files[file_index].received_messages[sequence_number] == NULL)
+
+        // convert sequence_number to file based one:
+        int sequence_number_file_based = 0;
+        if (sequence_number <= 100)
         {
-            files[file_index].received_messages[sequence_number] = (struct packet_message *)malloc(sizeof(struct packet_message));
-            if (files[file_index].received_messages[sequence_number] == NULL)
+            sequence_number_file_based = sequence_number % TOTAL_CHUNKS_SMALL;
+            if (sequence_number_file_based == 0)
+                sequence_number_file_based = TOTAL_CHUNKS_SMALL;
+        }
+        else
+        {
+            sequence_number_file_based = (sequence_number - 100) % TOTAL_CHUNKS_LARGE;
+            if (sequence_number_file_based == 0)
+                sequence_number_file_based = TOTAL_CHUNKS_LARGE;
+        }
+        printf("Sequence number file based: %d\n", sequence_number_file_based);
+
+        if (files[file_index].received_messages[sequence_number_file_based] == NULL)
+        {
+            files[file_index].received_messages[sequence_number_file_based] = (struct packet_message *)malloc(sizeof(struct packet_message));
+            if (files[file_index].received_messages[sequence_number_file_based] == NULL)
             {
                 fprintf(stderr, "ERROR: Failed to allocate memory for message chunk\n");
                 return false;
@@ -451,8 +478,8 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             {
                 message_length = BUFFER_SIZE - 15;
             }
-            memcpy(files[file_index].received_messages[sequence_number]->message, cust_pkt->message, message_length);
-            files[file_index].received_messages[sequence_number]->length = message_length;
+            memcpy(files[file_index].received_messages[sequence_number_file_based]->message, cust_pkt->message, message_length);
+            files[file_index].received_messages[sequence_number_file_based]->length = message_length;
             printf("Stored chunk with sequence number: %d\n", sequence_number);
 
             // Send acknowledgment
