@@ -16,9 +16,8 @@ THREAD_COUNT = 256
 THREAD_SLEEP = 0.15
 ### WARNING! PLEASE SET THESE VALUES ACCORDING TO THE REPORT BEFORE RUNNING ###
 
-CLIENT_ADDRESS_PORT = None
-LOCAL_IP = "server"
-LOCAL_PORT = 12345
+dest_ip = '192.168.122.192'  # Guest VM IP
+port = 12345
 CURRENT_DIRECTORY = os.getcwd()
 SOCKET_TIMEOUT = 0.5
 TOTAL_CHUNKS_ALL = 0
@@ -32,7 +31,7 @@ terminate_event = threading.Event()
 # Create a UDP socket at Server side
 UDPServerSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 UDPServerSocket.settimeout(SOCKET_TIMEOUT)
-UDPServerSocket.bind((LOCAL_IP, LOCAL_PORT))
+UDPServerSocket.bind(('0.0.0.0', port))
 
 # Making packets ready to send
 sequence_number = 0
@@ -54,7 +53,7 @@ for file_name in FILES:
   for i in range(0, len(file_data), chunk_size):
     sequence_number += 1
     message = file_data[i:i+chunk_size]
-    packet = file_name.encode() + sequence_number.to_bytes(4, 'big') + \
+    packet = file_name.encode() + b'\x00' + sequence_number.to_bytes(4, 'big') + \
         total_chunks.to_bytes(4, 'big') + message
 
     # Store the packet and mark it as not acknowledged
@@ -74,7 +73,7 @@ responsible = [i for i in range(1, TOTAL_CHUNKS_ALL + 1, responsible_area)]
 
 
 def packet_sender(UDPServerSocket, responsible):
-
+  print("Packet sender working")
   responsible_packets = {i: packets.get(i)
                          for i in range(responsible, responsible + responsible_area)}
   responsible_packets_acked = {i: False for i in range(responsible, responsible + responsible_area)}
@@ -89,8 +88,8 @@ def packet_sender(UDPServerSocket, responsible):
           responsible_packets_acked[sequence] = True
           continue
 
-        # print(f"Sending packet with sequence number {sequence}")
-        UDPServerSocket.sendto(packets[sequence], CLIENT_ADDRESS_PORT)
+        print(f"Sending packet with sequence number {sequence}")
+        UDPServerSocket.sendto(packets[sequence], (dest_ip, port))
       time.sleep(THREAD_SLEEP)
 
 
@@ -102,19 +101,21 @@ selective_send_threads = [threading.Thread(target=packet_sender, args=(
 # Start a loop that will run until the terminate_event is set
 acked_total = 0
 timeout_counter = 0
+started = 0
 while not terminate_event.is_set():
   # If the client's address is not set, set it and start the selective_send_threads
   # If the timeout counter reaches 5 and the client's address is set, set the terminate_event
   try:
-    ack_packet, address = UDPServerSocket.recvfrom(4)
     timeout_counter = 0
-    if not CLIENT_ADDRESS_PORT:
-      CLIENT_ADDRESS_PORT = address
+    if started == 0:
+      started = 1
       for thread in selective_send_threads:
         thread.start()
+    ack_packet, address = UDPServerSocket.recvfrom(4)
+
   except socket.timeout:
     timeout_counter += 1
-    if timeout_counter >= 5 and CLIENT_ADDRESS_PORT:
+    if timeout_counter >= 5:
       terminate_event.set()
     continue
 
