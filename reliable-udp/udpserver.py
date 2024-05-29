@@ -87,7 +87,7 @@ def packet_sender(UDPServerSocket, responsible):
           responsible_packets_acked[sequence] = True
           continue
 
-        print(f"Sending packet with sequence number {sequence}")
+        # print(f"Sending packet with sequence number {sequence}")
         UDPServerSocket.sendto(packets[sequence], (dest_ip, port))
       time.sleep(THREAD_SLEEP)
 
@@ -127,6 +127,7 @@ while not terminate_event.is_set():
   if ack_sequence == 0:
     continue
 
+  print(f"Ack received for packet: {ack_sequence}")
   with packets_lock:
     if ack_sequence in packets:
       del packets[ack_sequence]
@@ -140,5 +141,6 @@ while not terminate_event.is_set():
 
   if terminate_event.is_set():
     break
+
 
 print("Everything complete")
