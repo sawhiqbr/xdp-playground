@@ -9,7 +9,7 @@ import queue
 
 BUFFER_SIZE = 1024
 
-SERVER_ADDRESS_PORT = (socket.gethostbyname("server"), 20002)
+SERVER_ADDRESS_PORT = ("192.168.122.97", 12345)
 CURRENT_DIRECTORY = os.getcwd()
 SOCKET_TIMEOUT = 0.5
 TOTAL_CHUNKS_SMALL = 0
@@ -46,6 +46,7 @@ for file_name in os.listdir(folder_path):
 # Create a datagram socket at the Client side and bind it
 UDPClientSocket = socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM)
 UDPClientSocket.settimeout(SOCKET_TIMEOUT)
+UDPClientSocket.bind(('0.0.0.0', 12345))
 starttime = time.time()
 
 # Checks if all chunks have been received for a file and if so, reassembles the file
@@ -119,10 +120,6 @@ def file_creator():
 file_creator_thread = threading.Thread(target=file_creator, name="File Creator")
 file_creator_thread.start()
 
-# This will send a hello packet to the server to start the transfer
-# It will ensure that the server have our information
-hello = 0
-UDPClientSocket.sendto(hello.to_bytes(4, 'big'), SERVER_ADDRESS_PORT)
 
 # Chunks will hold sequence number -> acked info. It will start from 1 and go up to the
 # total number of chunks in all of the files. Total chunks will be set when the first packet
@@ -131,8 +128,6 @@ while (not terminate_event.is_set()):
   try:
     bytesAddressPair = UDPClientSocket.recvfrom(BUFFER_SIZE)
   except socket.timeout:
-    if (received_acks == 0):
-      UDPClientSocket.sendto(hello.to_bytes(4, 'big'), SERVER_ADDRESS_PORT)
     continue
 
   packet = bytesAddressPair[0]
@@ -143,6 +138,7 @@ while (not terminate_event.is_set()):
   total_chunks = int.from_bytes(packet[11:15], 'big')
   message = packet[15:]
 
+  print(f"Received seq: {sequence_number}")
   # Try to set the total chunks if it is not set
   if total_chunks_small_not_set and file_name.startswith("small"):
     TOTAL_CHUNKS_SMALL = total_chunks

@@ -51,6 +51,7 @@
 #define TOTAL_CHUNKS_LARGE 991
 
 bool files_done[20];
+int done_counter = 0;
 
 struct packet_message
 {
@@ -139,7 +140,7 @@ void check_and_create_file()
     // For each file
     for (int i = 0; i < 20; i++)
     {
-        printf("%s just here due to %d = %d\n", files[i].file_name, files[i].rcvd_chunks, files[i].total_chunks);
+        // printf("%s just here due to %d = %d\n", files[i].file_name, files[i].rcvd_chunks, files[i].total_chunks);
 
         if (files[i].done)
             continue;
@@ -150,7 +151,7 @@ void check_and_create_file()
         if (files[i].total_chunks != files[i].rcvd_chunks)
             continue;
 
-        printf("%s arrived here due to %d = %d\n", files[i].file_name, files[i].rcvd_chunks, files[i].total_chunks);
+        // printf("%s arrived here due to %d = %d\n", files[i].file_name, files[i].rcvd_chunks, files[i].total_chunks);
         // if file_name.startswith("small"):
         //     n = int(file_name.split("-")[1])
         //     start_sequence = total_chunks * n + 1
@@ -181,8 +182,12 @@ void check_and_create_file()
         }
 
         fclose(file);
-        printf("File %s created successfully\n", file_path);
+        // printf("File %s created successfully\n", file_path);
         files[i].done = true;
+        if (done_counter == 20)
+        {
+            printf("All files are received\n");
+        }
     }
 }
 
@@ -400,9 +405,9 @@ void print_raw_bytes(uint8_t *data, uint32_t len)
 {
     for (uint32_t i = 0; i < len; i++)
     {
-        printf("%02x ", data[i]);
+        // printf("%02x ", data[i]);
     }
-    printf("\n");
+    // printf("\n");
 }
 
 static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
@@ -412,25 +417,25 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     struct ethhdr *eth = (struct ethhdr *)pkt;
     if (ntohs(eth->h_proto) != ETH_P_IP)
     {
-        printf("Shouldn't have end up here: we aren't ethernet\n");
+        // printf("Shouldn't have end up here: we aren't ethernet\n");
         return false;
     }
 
     struct iphdr *iph = (struct iphdr *)(eth + 1);
     if (iph->protocol != IPPROTO_UDP)
     {
-        printf("Shouldn't have end up here: we aren't udp\n");
+        // printf("Shouldn't have end up here: we aren't udp\n");
         return false;
     }
 
     struct udphdr *udph = (struct udphdr *)((uint8_t *)iph + sizeof(*iph));
     struct udp_custom_packet *cust_pkt = (struct udp_custom_packet *)(udph + 1);
 
-    printf("Received UDP packet:\n");
-    printf("File name: %s\n", cust_pkt->file_name);
-    printf("Sequence number: %d\n", ntohl(cust_pkt->sequence_number));
-    printf("Total chunks: %d\n", ntohl(cust_pkt->total_chunks));
-    // printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
+    // printf("Received UDP packet:\n");
+    // printf("File name: %s\n", cust_pkt->file_name);
+    // printf("Sequence number: %d\n", ntohl(cust_pkt->sequence_number));
+    // printf("Total chunks: %d\n", ntohl(cust_pkt->total_chunks));
+    // // printf("Message: %.*s\n", len - sizeof(struct udphdr) - 15, cust_pkt->message);
 
     // Store the message part
     int total_chunks = ntohl(cust_pkt->total_chunks);
@@ -447,7 +452,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             if (strcmp(files[file_index].file_name, cust_pkt->file_name) == 0)
                 break;
         }
-        printf("File name is: %s\n", cust_pkt->file_name);
+        // printf("File name is: %s\n", cust_pkt->file_name);
         files[file_index].total_chunks = total_chunks;
 
         // convert sequence_number to file based one:
@@ -464,7 +469,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             if (sequence_number_file_based == 0)
                 sequence_number_file_based = TOTAL_CHUNKS_LARGE;
         }
-        printf("Sequence number file based: %d\n", sequence_number_file_based);
+        // printf("Sequence number file based: %d\n", sequence_number_file_based);
 
         if (files[file_index].received_messages[sequence_number_file_based] == NULL)
         {
@@ -474,32 +479,32 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
                 fprintf(stderr, "ERROR: Failed to allocate memory for message chunk\n");
                 return false;
             }
-            printf("message_length=%d\n", message_length);
+            // printf("message_length=%d\n", message_length);
             if (message_length > BUFFER_SIZE - 15)
             {
                 message_length = BUFFER_SIZE - 15;
             }
             memcpy(files[file_index].received_messages[sequence_number_file_based]->message, cust_pkt->message, message_length);
             files[file_index].received_messages[sequence_number_file_based]->length = message_length;
-            printf("Stored chunk with sequence number: %d\n", sequence_number);
+            // printf("Stored chunk with sequence number: %d\n", sequence_number);
             files[file_index].rcvd_chunks++;
             // Send acknowledgment
             struct ack_packet ack;
             ack.sequence_number = htonl(sequence_number);
             sendto(xsk->ack_sock, &ack, sizeof(ack), 0, (struct sockaddr *)&xsk->peer_addr, sizeof(xsk->peer_addr));
-            printf("Sent ACK for sequence number: %d\n", sequence_number);
+            // printf("Sent ACK for sequence number: %d\n", sequence_number);
         }
         else
         {
             struct ack_packet ack;
             ack.sequence_number = htonl(sequence_number);
             sendto(xsk->ack_sock, &ack, sizeof(ack), 0, (struct sockaddr *)&xsk->peer_addr, sizeof(xsk->peer_addr));
-            printf("Duplicate chunk with sequence number: %d\n", sequence_number);
+            // printf("Duplicate chunk with sequence number: %d\n", sequence_number);
         }
     }
     else
     {
-        printf("Sequence number %d out of bounds\n", sequence_number);
+        // printf("Sequence number %d out of bounds\n", sequence_number);
     }
 
     check_and_create_file();
