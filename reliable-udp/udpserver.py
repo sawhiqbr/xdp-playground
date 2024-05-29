@@ -67,8 +67,7 @@ for file_name in FILES:
 # The threads run concurrently with the main program until all packets have been acknowledged or the termination event is set.
 
 responsible_area = TOTAL_CHUNKS_ALL // THREAD_COUNT + 1
-print(f"Testing with BUFFER_SIZE: {BUFFER_SIZE} and THREAD_COUNT: {
-      THREAD_COUNT} and RESPONSIBLE_AREA: {responsible_area}")
+print(f"Testing with BUFFER_SIZE: {BUFFER_SIZE} and THREAD_COUNT: {THREAD_COUNT} and RESPONSIBLE_AREA: {responsible_area}")
 responsible = [i for i in range(1, TOTAL_CHUNKS_ALL + 1, responsible_area)]
 
 
