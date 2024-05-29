@@ -139,6 +139,8 @@ void check_and_create_file()
     // For each file
     for (int i = 0; i < 20; i++)
     {
+        printf("%s just here due to %d = %d\n", files[i].file_name, files[i].rcvd_chunks, files[i].total_chunks);
+
         if (files[i].done)
             continue;
 
@@ -148,7 +150,7 @@ void check_and_create_file()
         if (files[i].total_chunks != files[i].rcvd_chunks)
             continue;
 
-        printf("%s arrived here due to %d = %d\n", files[i].file_name, files[i].total_chunks, files[i].total_chunks);
+        printf("%s arrived here due to %d = %d\n", files[i].file_name, files[i].rcvd_chunks, files[i].total_chunks);
         // if file_name.startswith("small"):
         //     n = int(file_name.split("-")[1])
         //     start_sequence = total_chunks * n + 1
@@ -336,7 +338,7 @@ static struct xsk_socket_info *xsk_configure_socket(struct config *cfg, struct x
     memset(&xsk_info->peer_addr, 0, sizeof(xsk_info->peer_addr));
     xsk_info->peer_addr.sin_family = AF_INET;
     xsk_info->peer_addr.sin_port = htons(12345);
-    inet_pton(AF_INET, "144.122.19.97", &xsk_info->peer_addr.sin_addr);
+    inet_pton(AF_INET, "192.168.122.97", &xsk_info->peer_addr.sin_addr);
 
     // Create a socket for sending acknowledgments
     xsk_info->ack_sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -447,7 +449,6 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
         }
         printf("File name is: %s\n", cust_pkt->file_name);
         files[file_index].total_chunks = total_chunks;
-        files[file_index].rcvd_chunks++;
 
         // convert sequence_number to file based one:
         int sequence_number_file_based = 0;
@@ -481,7 +482,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             memcpy(files[file_index].received_messages[sequence_number_file_based]->message, cust_pkt->message, message_length);
             files[file_index].received_messages[sequence_number_file_based]->length = message_length;
             printf("Stored chunk with sequence number: %d\n", sequence_number);
-
+            files[file_index].rcvd_chunks++;
             // Send acknowledgment
             struct ack_packet ack;
             ack.sequence_number = htonl(sequence_number);
@@ -490,6 +491,9 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
         }
         else
         {
+            struct ack_packet ack;
+            ack.sequence_number = htonl(sequence_number);
+            sendto(xsk->ack_sock, &ack, sizeof(ack), 0, (struct sockaddr *)&xsk->peer_addr, sizeof(xsk->peer_addr));
             printf("Duplicate chunk with sequence number: %d\n", sequence_number);
         }
     }
