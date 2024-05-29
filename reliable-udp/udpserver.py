@@ -67,7 +67,8 @@ for file_name in FILES:
 # The threads run concurrently with the main program until all packets have been acknowledged or the termination event is set.
 
 responsible_area = TOTAL_CHUNKS_ALL // THREAD_COUNT + 1
-print(f"Testing with BUFFER_SIZE: {BUFFER_SIZE} and THREAD_COUNT: {THREAD_COUNT} and RESPONSIBLE_AREA: {responsible_area}")
+print(f"Testing with BUFFER_SIZE: {BUFFER_SIZE} and THREAD_COUNT: {
+      THREAD_COUNT} and RESPONSIBLE_AREA: {responsible_area}")
 responsible = [i for i in range(1, TOTAL_CHUNKS_ALL + 1, responsible_area)]
 
 
@@ -95,6 +96,8 @@ def packet_sender(UDPServerSocket, responsible):
 selective_send_threads = [threading.Thread(target=packet_sender, args=(
     UDPServerSocket, i, ), name=f"Packet Resender {i}") for i in range(1, TOTAL_CHUNKS_ALL + 1, responsible_area)]
 
+# Start benchmarking
+start_time = time.time()
 
 # Initialize the total number of acknowledged packets and the timeout counter
 # Start a loop that will run until the terminate_event is set
@@ -142,5 +145,9 @@ while not terminate_event.is_set():
   if terminate_event.is_set():
     break
 
+# End benchmarking
+end_time = time.time()
+total_time = end_time - start_time
+print(f"Total time taken: {total_time} seconds")
 
 print("Everything complete")
