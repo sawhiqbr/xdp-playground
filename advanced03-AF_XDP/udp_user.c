@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <sys/resource.h>
@@ -24,16 +25,20 @@
 
 #include <sys/stat.h>
 #include <sys/types.h>
-
-#include "../common/common_params.h"
+#include <stdbool.h>
 
 #define BUFFER_SIZE 1024
 #define MAX_CHUNKS 10000
 #define TOTAL_CHUNKS_SMALL 10
 #define TOTAL_CHUNKS_LARGE 991
-
+#define PORT_ 12344
 bool files_done[20];
 int done_counter = 0;
+int first_packet = 0;
+
+struct timeval start, temp, end;
+long seconds, useconds;
+double mtime;
 
 struct packet_message
 {
@@ -120,8 +125,18 @@ void check_and_create_file()
 
     fclose(file);
     files[i].done = true;
+    done_counter++;
     if (done_counter == 20)
     {
+      gettimeofday(&end, NULL);
+
+      seconds = end.tv_sec - start.tv_sec;
+      useconds = end.tv_usec - start.tv_usec;
+
+      mtime = ((seconds) * 1000 + useconds / 1000.0) + 0.5;
+
+      printf("Time taken to receive and create all files: %f milliseconds\n", mtime);
+
       printf("All files are received\n");
     }
   }
@@ -168,6 +183,13 @@ void handle_receive_packets(int sockfd, struct sockaddr_in *peer_addr)
     {
       perror("recvfrom failed");
       continue;
+    }
+
+    if (first_packet == 0)
+    {
+      printf("First packet arrived\n");
+      first_packet = 1;
+      gettimeofday(&start, NULL);
     }
 
     cust_pkt = (struct udp_custom_packet *)buffer;
@@ -259,7 +281,7 @@ int main(int argc, char **argv)
   memset(&server_addr, 0, sizeof(server_addr));
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = INADDR_ANY;
-  server_addr.sin_port = htons(12345);
+  server_addr.sin_port = htons(PORT_);
 
   if (bind(sockfd, (const struct sockaddr *)&server_addr, sizeof(server_addr)) < 0)
   {
@@ -270,7 +292,7 @@ int main(int argc, char **argv)
 
   memset(&peer_addr, 0, sizeof(peer_addr));
   peer_addr.sin_family = AF_INET;
-  peer_addr.sin_port = htons(12345);
+  peer_addr.sin_port = htons(PORT_);
   inet_pton(AF_INET, "192.168.122.97", &peer_addr.sin_addr);
 
   init_message_storage();

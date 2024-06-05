@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 #include <sys/resource.h>
@@ -52,6 +53,11 @@
 
 bool files_done[20];
 int done_counter = 0;
+int first_packet = 0;
+
+struct timeval start, temp, end;
+long seconds, useconds;
+double mtime;
 
 struct packet_message
 {
@@ -184,8 +190,18 @@ void check_and_create_file()
         fclose(file);
         // printf("File %s created successfully\n", file_path);
         files[i].done = true;
+        done_counter++;
         if (done_counter == 20)
         {
+            gettimeofday(&end, NULL);
+
+            seconds = end.tv_sec - start.tv_sec;
+            useconds = end.tv_usec - start.tv_usec;
+
+            mtime = ((seconds) * 1000 + useconds / 1000.0) + 0.5;
+
+            printf("Time taken to receive and create all files: %f milliseconds\n", mtime);
+
             printf("All files are received\n");
         }
     }
@@ -412,22 +428,16 @@ void print_raw_bytes(uint8_t *data, uint32_t len)
 
 static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t len)
 {
+    if (first_packet == 0)
+    {
+        printf("First packet arrived\n");
+        first_packet = 1;
+        gettimeofday(&start, NULL);
+    }
     uint8_t *pkt = xsk_umem__get_data(xsk->umem->buffer, addr);
 
     struct ethhdr *eth = (struct ethhdr *)pkt;
-    if (ntohs(eth->h_proto) != ETH_P_IP)
-    {
-        // printf("Shouldn't have end up here: we aren't ethernet\n");
-        return false;
-    }
-
     struct iphdr *iph = (struct iphdr *)(eth + 1);
-    if (iph->protocol != IPPROTO_UDP)
-    {
-        // printf("Shouldn't have end up here: we aren't udp\n");
-        return false;
-    }
-
     struct udphdr *udph = (struct udphdr *)((uint8_t *)iph + sizeof(*iph));
     struct udp_custom_packet *cust_pkt = (struct udp_custom_packet *)(udph + 1);
 
