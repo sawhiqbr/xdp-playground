@@ -31,7 +31,7 @@
 #define MAX_CHUNKS 10000
 #define TOTAL_CHUNKS_SMALL 10
 #define TOTAL_CHUNKS_LARGE 991
-#define PORT_ 12344
+#define PORT_ 12345
 bool files_done[20];
 int done_counter = 0;
 int first_packet = 0;
@@ -138,6 +138,7 @@ void check_and_create_file()
       printf("Time taken to receive and create all files: %f milliseconds\n", mtime);
 
       printf("All files are received\n");
+      exit(0);
     }
   }
 }
