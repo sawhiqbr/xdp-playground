@@ -1,90 +1,30 @@
-First packet arrived
-Time taken to receive and create all files: 773.347000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1020.156000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 910.777000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 928.705000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1430.980000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1260.161000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1265.437000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1124.930000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1054.898000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 772.252000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1033.391000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1054.511000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 892.363000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1261.903000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 922.324000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 771.775000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1002.928000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1354.298000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 943.548000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1088.361000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 887.813000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1045.400000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 940.060000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 839.518000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 606.001000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 757.228000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 970.200000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1070.479000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1050.800000 milliseconds
-All files are received
-First packet arrived
-Time taken to receive and create all files: 1208.736000 milliseconds
-All files are received
+773.347000
+1020.156000
+910.777000
+928.705000
+1430.980000
+1260.161000
+1265.437000
+1124.930000
+1054.898000
+772.252000
+1033.391000
+1054.511000
+892.363000
+1261.903000
+922.324000
+771.775000
+1002.928000
+1354.298000
+943.548000
+1088.361000
+887.813000
+1045.400000
+940.060000
+839.518000
+606.001000
+757.228000
+970.200000
+1070.479000
+1050.800000
+1208.736000
