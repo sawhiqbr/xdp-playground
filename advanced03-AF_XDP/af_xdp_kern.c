@@ -63,9 +63,11 @@ int xdp_sock_prog(struct xdp_md *ctx)
 
     // source IP address matches the target IP address
     // notice due to address translation IP address is given as 192.168.122.1
-    bpf_trace_printk("IP src: %x, expected: %x\n", sizeof("IP src: %x, expected: %x\n"), iph->saddr, bpf_ntohl(SOURCE_IP));
     if (iph->saddr != bpf_ntohl(SOURCE_IP))
+    {
+        bpf_trace_printk("IP src: %x, expected: %x\n", sizeof("IP src: %x, expected: %x\n"), iph->saddr, bpf_ntohl(SOURCE_IP));
         return XDP_PASS;
+    }
 
     // packet data is at least the size of a UDP header
     udph = (void *)iph + sizeof(struct iphdr);
@@ -76,14 +78,18 @@ int xdp_sock_prog(struct xdp_md *ctx)
     }
 
     // destination port matches the target port
-    bpf_trace_printk("UDP dest port: %d, expected: %d\n", sizeof("UDP dest port: %d, expected: %d\n"), bpf_ntohs(udph->dest), TARGET_PORT);
     if (udph->dest != bpf_htons(TARGET_PORT))
+    {
+        bpf_trace_printk("UDP dest port: %d, expected: %d\n", sizeof("UDP dest port: %d, expected: %d\n"), bpf_ntohs(udph->dest), TARGET_PORT);
         return XDP_PASS;
+    }
 
     // packet is UDP, from the target IP, and to the target port, redirect it
-    bpf_trace_printk("Packet matches criteria, redirecting\n", sizeof("Packet matches criteria, redirecting\n"));
     if (bpf_map_lookup_elem(&xsks_map, &index))
+    {
+        bpf_trace_printk("Packet matches criteria, redirecting\n", sizeof("Packet matches criteria, redirecting\n"));
         return bpf_redirect_map(&xsks_map, index, 0);
+    }
 
     return XDP_PASS;
 }

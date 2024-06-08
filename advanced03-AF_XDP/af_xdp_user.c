@@ -55,7 +55,7 @@ bool files_done[20];
 int done_counter = 0;
 int first_packet = 0;
 
-struct timeval start, temp, end;
+struct timeval start, temp, end, csumstr, csumend;
 long seconds, useconds;
 double mtime;
 
@@ -399,6 +399,45 @@ static void complete_tx(struct xsk_socket_info *xsk)
     }
 }
 
+uint16_t udp_checksum(struct udphdr *p_udp_header, size_t len, uint32_t src_addr, uint32_t dest_addr)
+{
+    const uint16_t *buf = (const uint16_t *)p_udp_header;
+    uint16_t *ip_src = (void *)&src_addr, *ip_dst = (void *)&dest_addr;
+    uint32_t sum;
+    size_t length = len;
+
+    // Calculate the sum
+    sum = 0;
+    while (len > 1)
+    {
+        sum += *buf++;
+        if (sum & 0x80000000)
+            sum = (sum & 0xFFFF) + (sum >> 16);
+        len -= 2;
+    }
+
+    if (len & 1)
+        // Add the padding if the packet lenght is odd
+        sum += *((uint8_t *)buf);
+
+    // Add the pseudo-header
+    sum += *(ip_src++);
+    sum += *ip_src;
+
+    sum += *(ip_dst++);
+    sum += *ip_dst;
+
+    sum += htons(IPPROTO_UDP);
+    sum += htons(length);
+
+    // Add the carries
+    while (sum >> 16)
+        sum = (sum & 0xFFFF) + (sum >> 16);
+
+    // Return the one's complement of sum
+    return (uint16_t)~sum;
+}
+
 static inline __sum16 csum16_add(__sum16 csum, __be16 addend)
 {
     uint16_t res = (uint16_t)csum;
@@ -415,6 +454,11 @@ static inline __sum16 csum16_sub(__sum16 csum, __be16 addend)
 static inline void csum_replace2(__sum16 *sum, __be16 old, __be16 new)
 {
     *sum = ~csum16_add(csum16_sub(~(*sum), old), new);
+}
+
+uint16_t swap_uint16(uint16_t val)
+{
+    return (val << 8) | (val >> 8);
 }
 
 void print_raw_bytes(uint8_t *data, uint32_t len)
@@ -440,6 +484,16 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
     struct iphdr *iph = (struct iphdr *)(eth + 1);
     struct udphdr *udph = (struct udphdr *)((uint8_t *)iph + sizeof(*iph));
     struct udp_custom_packet *cust_pkt = (struct udp_custom_packet *)(udph + 1);
+
+    // gettimeofday(&csumstr, NULL);
+    udp_checksum(udph, swap_uint16(udph->len), iph->saddr, iph->daddr);
+    // gettimeofday(&csumend, NULL);
+    // seconds = csumend.tv_sec - csumstr.tv_sec;
+    // useconds = csumend.tv_usec - csumstr.tv_usec;
+
+    // mtime = ((seconds) * 1000 + useconds / 1000.0) + 0.5;
+
+    // printf("Time taken to calculate checksum: %f milliseconds\n", mtime);
 
     // printf("Received UDP packet:\n");
     // printf("File name: %s\n", cust_pkt->file_name);
