@@ -1,4 +1,4 @@
 This folder is for the experimentations. I edited the makefile to accept the kernel and userspace files rik1.c, rik2.c, use.c here. The original makefile is that of basic01. I am putting my designs here.
 
-udps.py is UDP sender for experimenting
-udpl.py is listening to the UDP packets and writing the content as they come byte by byte numerically.
+- udps.py is UDP packets sender for experimenting
+- udpl.py is listening to the UDP packets and writing the content as they come byte by byte numerically.
