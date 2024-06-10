@@ -10,7 +10,7 @@
 
 // NAT is altering the source IP
 #define SOURCE_IP 0xC0A87A61 // 192.168.122.97 0xc0a87a61
-#define TARGET_PORT 12345
+#define TARGET_PORT 12346
 
 struct
 {

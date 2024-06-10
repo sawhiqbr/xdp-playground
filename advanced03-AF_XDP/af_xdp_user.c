@@ -733,6 +733,8 @@ int main(int argc, char **argv)
         }
     }
 
+    sleep(100000000);
+    printf("Sleep ended\n");
     /* Allow unlimited locking of memory, so all memory needed for packet
      * buffers can be locked.
      */
