@@ -3,8 +3,8 @@ import socket
 import os
 import time
 
-HOST              = 'server'
-PORT              = 17000
+HOST              = '192.168.122.192'
+PORT              = 5001
 CURRENT_DIRECTORY = os.getcwd()
 
 

@@ -4,8 +4,8 @@ import os
 import time
 import hashlib
 
-HOST               = socket.gethostbyname('server')
-PORT               = 17000
+HOST               = '0.0.0.0'
+PORT               = 5001
 CURRENT_DIRECTORY  = os.getcwd()
 BUFFER_SIZE        = 1024
 

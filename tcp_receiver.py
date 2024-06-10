@@ -16,9 +16,9 @@ def start_server():
             conn, addr = s.accept()
             with conn:
                 print(f"Connected by {addr}")
-                file_count = int(conn.recv(1024).decode())
+                file_count = int(conn.recv(2).decode())
                 for _ in range(file_count):
-                    filename = conn.recv(1024).decode()
+                    filename = conn.recv(8).decode()
                     file_size = int(conn.recv(1024).decode())
                     file_path = os.path.join(RECEIVE_FOLDER, filename)
 
