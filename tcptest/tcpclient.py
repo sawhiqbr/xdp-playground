@@ -5,7 +5,7 @@ import time
 import hashlib
 
 HOST               = '0.0.0.0'
-PORT               = 5001
+PORT               = 18643
 CURRENT_DIRECTORY  = os.getcwd()
 BUFFER_SIZE        = 1024
 
@@ -41,22 +41,6 @@ def receive_file(conn, filename):
             file.write(data)
             remaining -= len(data)
     conn.sendall(b'File received')
-
-
-    # Calculate MD5 hash
-    with open(os.path.join(CURRENT_DIRECTORY, "objects_received_tcp", f"{filename}"), 'rb') as f:
-        file_data = f.read()
-        calculated_hash = hashlib.md5(file_data).hexdigest()
-
-    # Read the stored MD5 hash
-    with open(os.path.join(CURRENT_DIRECTORY, "objects", f"{filename}.md5"), 'r') as md5_file:
-        stored_hash = md5_file.read().strip()
-
-    # Compare hashes
-    if stored_hash == calculated_hash:
-        pass
-    else:
-        print(f"File {filename} corrupted during transfer")
 
 for i in range(30):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

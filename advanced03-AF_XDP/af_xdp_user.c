@@ -533,7 +533,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
             if (sequence_number_file_based == 0)
                 sequence_number_file_based = TOTAL_CHUNKS_LARGE;
         }
-        // printf("Sequence number file based: %d\n", sequence_number_file_based);
+        printf("Sequence number file based: %d\n", sequence_number_file_based);
 
         if (files[file_index].received_messages[sequence_number_file_based] == NULL)
         {
