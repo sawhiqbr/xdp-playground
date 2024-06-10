@@ -45,11 +45,11 @@
 #define RX_BATCH_SIZE 64
 #define INVALID_UMEM_FRAME UINT64_MAX
 
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 64000
 #define MAX_CHUNKS 10000
 // TODO: Detect this values automatically
-#define TOTAL_CHUNKS_SMALL 10
-#define TOTAL_CHUNKS_LARGE 991
+#define TOTAL_CHUNKS_SMALL 1
+#define TOTAL_CHUNKS_LARGE 16
 
 bool files_done[20];
 int done_counter = 0;
@@ -521,7 +521,7 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
 
         // convert sequence_number to file based one:
         int sequence_number_file_based = 0;
-        if (sequence_number <= 100)
+        if (sequence_number <= 10)
         {
             sequence_number_file_based = sequence_number % TOTAL_CHUNKS_SMALL;
             if (sequence_number_file_based == 0)
@@ -529,11 +529,11 @@ static bool process_packet(struct xsk_socket_info *xsk, uint64_t addr, uint32_t 
         }
         else
         {
-            sequence_number_file_based = (sequence_number - 100) % TOTAL_CHUNKS_LARGE;
+            sequence_number_file_based = (sequence_number - 10) % TOTAL_CHUNKS_LARGE;
             if (sequence_number_file_based == 0)
                 sequence_number_file_based = TOTAL_CHUNKS_LARGE;
         }
-        printf("Sequence number file based: %d\n", sequence_number_file_based);
+        // printf("Sequence number file based: %d\n", sequence_number_file_based);
 
         if (files[file_index].received_messages[sequence_number_file_based] == NULL)
         {
