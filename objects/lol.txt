@@ -1,30 +1,93 @@
-0.10100889205932617
-0.04863882064819336
-0.08094072341918945
-0.0472259521484375
-0.052338361740112305
-0.04465079307556152
-0.07290315628051758
-0.06226205825805664
-0.088958740234375
-0.06473374366760254
-0.11365842819213867
-0.0769798755645752
-0.10011625289916992
-0.0930640697479248
-0.10411572456359863
-0.08780670166015625
-0.09830689430236816
-0.08926105499267578
-0.1102752685546875
-0.092681884765625
-0.15774178504943848
-0.09575343132019043
-0.08211088180541992
-0.06739497184753418
-0.14031696319580078
-0.09472084045410156
-0.08776187896728516
-0.053818702697753906
-0.09672904014587402
-0.08814239501953125
+101.00889205932617,
+048.63882064819336,
+080.94072341918945,
+047.2259521484375,
+052.338361740112305,
+044.65079307556152,
+072.90315628051758,
+062.26205825805664,
+088.958740234375,
+064.73374366760254,
+113.65842819213867,
+076.9798755645752,
+100.11625289916992,
+093.0640697479248,
+104.11572456359863,
+087.80670166015625,
+098.30689430236816,
+089.26105499267578,
+110.2752685546875,
+092.681884765625,
+157.74178504943848,
+095.75343132019043,
+082.11088180541992,
+067.39497184753418,
+140.31696319580078,
+094.72084045410156,
+087.76187896728516,
+053.818702697753906,
+096.72904014587402,
+088.14239501953125,
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.030556917190551758
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.03282904624938965
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.031972408294677734
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.04083418846130371
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.037996768951416016
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.03923845291137695
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.03434324264526367
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.04047226905822754
+Initiating clients
+Connected with client 1
+
+Receiving file from client 1
+
+Received successfully! New filename is: output0.txt
+Time taken: 0.04237842559814453
